@@ -4,6 +4,7 @@
 
 import cv2
 import os
+import numpy as np
 
 
 def cpd():  # 현재 디렉토리 확인
@@ -59,25 +60,72 @@ def run(video_name):  # CV2로 동영상 재생
         print("can't open")
 
 
-def fip(video_name):  # fore image processing (움직이는 영상만 따기 - 배경제거)
+def bip(video_name):  # background image processing (배경이미지 처리함수)
     input_video = video_name
     cap = cv2.VideoCapture(input_video)  # 동영상 캡처 객체 생성
     fps = cap.get(cv2.CAP_PROP_FPS)  # 초당 프레임
-    fwt = round((1 / fps) * 1000)  # 프레임당 재생시간 설정 & 정수입력으로 round처리
+    fwt = round((1 / fps) * 1000)  # 프레임당 재생시간 설정 & 입력단위가 ms이므로 *1000 & 정수입력으로 round처리
 
-    rmbg = cv2.createBackgroundSubtractorMOG2()  # 배경제거 객체생성
+    cbs = cv2.createBackgroundSubtractorKNN()  # 배경제거 객체생성함수 선언
 
     if cap.isOpened():  # 캡쳐객체 초기화 확인 (동영상을 불러올 수 있는지 확인하는듯)
 
         while cap.isOpened():  # 초기화 되는동안 영상재생
-            ret, frame = cap.read()  # Run-able, Frame
+            ret, frame = cap.read()  # 프레임 추출가능(T/F), 추출한프레임
 
             if ret:  # run = True (캡쳐 객체 호출가능) : 동영상 재생시작
-                rmbg_frame = rmbg.apply(frame)  # 배경제거한 프레임 생성
+                frame = cv2.resize(frame, (720, 480))  # 프레임이미지 크기 변환 720*480
+                rmbg_frame = cbs.apply(frame)  # 배경제거한 프레임 생성
+                back_frame = cbs.getBackgroundImage()  # 배경 프레임 생성
+
                 cv2.imshow(input_video, frame)  # 입력비디오의 프레임 이미지를 보여줌
-                cv2.imshow(input_video + "_rmbg", rmbg_frame)  # 배경제거된 프레임 이미지를 보여줌
+                cv2.imshow("rmbg_" + input_video, rmbg_frame)  # 배경제거된 프레임 이미지를 보여줌
+                cv2.imshow("back_" + input_video, back_frame)  # 배경 프레임 이미지를 보여줌
 
                 if cv2.waitKey(fwt) == ord('q'):  # fps만큼 재생하다가 q입력되면 동작 종료
+                    cap.release()
+                    cv2.destroyAllWindows()
+                    print("Stop video")
+                    break
+
+            else:  # run = False (캡쳐 객체 호출불가능) : 동영상 자동 종료
+                cap.release()  # 캡쳐 자원 반납
+                cv2.destroyAllWindows()  # 창종료
+                print("End of playback")
+
+    else:
+        print("Can't open")
+
+
+def scs(video_name):  # screenshot (영상 이미지 저장)
+    input_video = video_name
+    cap = cv2.VideoCapture(input_video)  # 동영상 캡처 객체 생성
+    fps = cap.get(cv2.CAP_PROP_FPS)  # 초당 프레임
+    fwt = round((1 / fps) * 1000)  # 프레임당 재생시간 설정 & 입력단위가 ms이므로 *1000 & 정수입력으로 round처리
+
+    cbs = cv2.createBackgroundSubtractorKNN()  # 배경제거 객체생성함수 선언
+
+    if cap.isOpened():  # 캡쳐객체 초기화 확인 (동영상을 불러올 수 있는지 확인하는듯)
+
+        while cap.isOpened():  # 초기화 되는동안 영상재생
+            ret, frame = cap.read()  # 프레임 추출가능(T/F), 추출한프레임
+
+            if ret:  # run = True (캡쳐 객체 호출가능) : 동영상 재생시작
+                frame = cv2.resize(frame, (720, 480))  # 프레임이미지 크기 변환 720*480
+                rmbg_frame = cbs.apply(frame)  # 배경제거한 프레임 생성
+                back_frame = cbs.getBackgroundImage()  # 배경 프레임 생성
+
+                cv2.imshow(input_video, frame)  # 입력비디오의 프레임 이미지를 보여줌
+                cv2.imshow('rmbg_' + input_video, rmbg_frame)  # 배경제거된 프레임 이미지를 보여줌
+                cv2.imshow('back_' + input_video, back_frame)  # 배경 프레임 이미지를 보여줌
+
+                if cv2.waitKey(1) == ord('s'):  # s입력시 함수 동작
+                    frame_count = cap.get(cv2.CAP_PROP_POS_FRAMES)  # 현재 프레임 번호지정
+                    cv2.imwrite('image/' + str(frame_count) + '_origin.jpg', frame)  # 해당 프레임 이미지 저장
+                    cv2.imwrite('image/' + str(frame_count) + '_rmbg.jpg', rmbg_frame)
+                    cv2.imwrite('image/' + str(frame_count) + '_back.jpg', back_frame)
+
+                if cv2.waitKey(fwt-1) == ord('q'):  # fps만큼 재생하다가 q입력되면 동작 종료
                     cap.release()
                     cv2.destroyAllWindows()
                     print("Stop video")
